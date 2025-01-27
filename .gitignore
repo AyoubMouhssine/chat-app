@@ -1,0 +1,64 @@
+# General Node.js/React Ignore
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Laravel Ignore
+/vendor/
+.env
+/storage/*
+!/storage/framework
+!/storage/framework/**
+!/storage/logs
+/public/storage
+/homestead.json
+/homestead.yaml
+/nova-components
+.phpunit.result.cache
+/.phpunit.result.cache
+/node_modules/
+
+# General Composer
+composer.phar
+
+# IDEs and Editors
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Logs and Debug
+*.log
+*.log.*
+storage/logs/*
+/debug.log
+
+# Third Folder
+#
