@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('user_group_tabe', function (Blueprint $table) {
+        Schema::create('group_user', function (Blueprint $table) {
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('group_id');
-            $table->enum('role', ['admin', 'member'])->default('member');
-            $table->foreign('user_id')->references('id')->on('users');
+            $table->enum('role', ['admin', 'member'])->default(value: 'member');
+            $table->foreign('user_id')->references(columns: 'id')->on('users');
             $table->foreign('group_id')->references('id')->on('groups');
             $table->primary(['user_id', 'group_id']); 
         });
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('user_group_tabe');
+        Schema::dropIfExists('group_user');
     }
 };

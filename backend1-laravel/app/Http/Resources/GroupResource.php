@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class UserResource extends JsonResource
+class GroupResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -17,12 +17,8 @@ class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'email' => $this->email,
-            'avatar' => $this->avatar,
-            'status' => $this->status,
-            'role' => $this->whenPivotLoaded('group_user', function () {
-                return $this->pivot->role;
-            })
+            'description' => $this->description,
+            'created_by' =>$this->creator->name,
         ];
     }
 }

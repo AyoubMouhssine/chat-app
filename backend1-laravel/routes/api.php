@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\GroupController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -18,7 +19,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout',[AuthController::class,'logout']);
     Route::put('/update', [AuthController::class,'update']);
+
+    Route::get("/user/groups", [UserController::class, 'groups']);
+
+    Route::post('/groups', [GroupController::class,'store']);
+    Route::post('/groups/{group}/add',[GroupController::class,'addUserToGroup']);
+    Route::delete('/groups/{group}', [GroupController::class,'destroy']);
+    Route::get('/groups/{group}/users', [GroupController::class,'getUsersOfGroup']);
+
 });
+
+// !authentification required
+Route::get('/groups', [GroupController::class,'index']);
 
 Route::get('/users', [UserController::class,'index'])->name('users.index');
 Route::get("/users/{user}", [UserController::class,"show"])->name("users.show");
