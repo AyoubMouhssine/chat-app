@@ -1,88 +1,33 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import type { AuthResponse, LoginCredentials, RegisterData } from '../../types';
-import { api } from '../../services/api';
+import { createSlice } from '@reduxjs/toolkit';
+import { User } from '../../types';
 
 interface AuthState {
-  user: AuthResponse | null;
-  token: string | null;
-  loading: boolean;
-  error: string | null;
+  isAuthenticated:boolean
+  user:User|null
 }
 
 const initialState: AuthState = {
-  user: null,
-  token: localStorage.getItem('token') || null,
-  loading: false,
-  error: null,
+  isAuthenticated : Boolean(localStorage.getItem('token')),
+  user: localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")!) : null,
+
 };
-
-export const login = createAsyncThunk(
-  'auth/login',
-  async (credentials: LoginCredentials, { rejectWithValue }) => {
-    try {
-      const response = await api.post<AuthResponse>('/auth/login', credentials);
-      localStorage.setItem('token', response.token);
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(error.response.data.message || 'Login failed');
-    }
-  }
-);
-
-export const register = createAsyncThunk(
-  'auth/register',
-  async (data: RegisterData, { rejectWithValue }) => {
-    try {
-      const response = await api.post<AuthResponse>('/auth/register', data);
-      localStorage.setItem('token', response.token);
-      return response;
-    } catch (error: any) {
-      return rejectWithValue(error.response.data.message || 'Registration failed');
-    }
-  }
-);
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    logout: (state) => {
-      state.user = null;
-      state.token = null;
-      localStorage.removeItem('token');
+    login(state, {payload}){
+      localStorage.setItem("token", payload.token);
+      localStorage.setItem("user", JSON.stringify(payload.user));
+      state.isAuthenticated = true;
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(login.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(login.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload;
-        state.token = action.payload.token;
-      })
-      .addCase(login.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-      .addCase(register.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(register.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload;
-        state.token = action.payload.token;
-      })
-      .addCase(register.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      });
+    logout: (state) => {
+      state.isAuthenticated = false;
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    },
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { login, logout } = authSlice.actions;
 export default authSlice;

@@ -1,6 +1,6 @@
 export interface User {
   id: string;
-  username: string;
+  name: string;
   email: string;
   avatar?: string;
   status: 'online' | 'offline';
@@ -21,7 +21,7 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  username: string;
+  name: string;
   email: string;
   password: string;
 }
@@ -29,6 +29,7 @@ export interface RegisterData {
 export interface AuthResponse {
   token: string;
   user: User;
+  message:string;
 }
 
 export interface ApiResponse<T> {

@@ -1,28 +1,28 @@
-const API_BASE_URL = 'http://localhost:8080/api';
+import axios from 'axios';
 
-export const api = {
-  async get<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!response.ok) throw new Error('Network response was not ok');
-    return response.json();
-  },
+const api = axios.create({
+  baseURL: 'http://localhost:8000/api',
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async post<T>(endpoint: string, data: any): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error('Network response was not ok');
-    return response.json();
-  },
-};
+// Add auth token to requests if it exists
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle errors globally
+api.interceptors.response.use(
+  response => response,
+  error => {
+    return Promise.reject(error);
+  }
+);
+
+export default api;

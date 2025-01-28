@@ -7,3 +7,5 @@ export const store = configureStore({
         [authStore.name]: authStore.reducer 
     }
 }) 
+
+export type RootState = ReturnType<typeof store.getState>

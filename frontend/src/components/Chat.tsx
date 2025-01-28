@@ -1,14 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { Send, UserCircle, LogOut } from 'lucide-react';
-import type { Message, User } from '../types';
-import { api } from '../services/api';
-import { auth } from '../services/auth';
+import React, { useState, useEffect} from 'react';
+import { Send, LogOut } from 'lucide-react';
+import type { ApiResponse, Message, User } from '../types';
+import api  from '../services/api';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { useNavigate } from 'react-router-dom';
+import { logout } from '../store/slices/authSlice';
+import Loader from './Loader';
 
 export default function Chat() {
+  const {isAuthenticated} = useSelector((state:RootState) => state.auth);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login", { replace: true });
+    } else {
+      setLoading(false);
+    }
+  }, [isAuthenticated, navigate]);
 
   useEffect(() => {
     fetchUsers();
@@ -19,8 +35,8 @@ export default function Chat() {
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get<User[]>('/users');
-      setUsers(response);
+      const response = await api.get<ApiResponse<User[]>>('/users');      
+      setUsers(response.data.data);
     } catch (error) {
       console.error('Error fetching users:', error);
     }
@@ -29,7 +45,7 @@ export default function Chat() {
   const fetchMessages = async (userId: string) => {
     try {
       const response = await api.get<Message[]>(`/messages/${userId}`);
-      setMessages(response);
+      setMessages(response.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
@@ -57,8 +73,16 @@ export default function Chat() {
   };
 
   const handleLogout = async () => {
-    await auth.logout();
+    console.log("logout");
+    return;
+      await api.post("/logout");
+      dispatch(logout());
   };
+
+
+  if (loading) {
+    return <Loader />;
+  }
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -72,6 +96,7 @@ export default function Chat() {
             title="Logout"
           >
             <LogOut className="w-5 h-5" />
+            
           </button>
         </div>
         <div className="space-y-2">
@@ -83,9 +108,10 @@ export default function Chat() {
                 selectedUser === user.id ? 'bg-blue-50' : 'hover:bg-gray-50'
               }`}
             >
-              <UserCircle className="w-8 h-8 text-gray-500 mr-2" />
+              {/* <UserCircle className="w-8 h-8 text-gray-500 mr-2" /> */}
+              <img src={user.avatar} alt={`${user.name} avatar`} width="30" height="30"/>
               <div>
-                <p className="font-medium">{user.username}</p>
+                <p className="font-medium">{user.name}</p>
                 <p className="text-sm text-gray-500">{user.status}</p>
               </div>
             </div>
