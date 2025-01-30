@@ -11,18 +11,15 @@ import Loader from "./Loader";
 import CreateGroupModal from "./CreateGroupModal";
 import messageApi from "../services/messageApi";
 
-// Types
 interface ChatState {
   type: "user" | "group";
   id: number;
 }
 
 export default function Chat() {
-  // Redux state
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  // Local state
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [users, setUsers] = useState<User[]>([]);
@@ -85,11 +82,10 @@ export default function Chat() {
     }
   }, [selectedChat]);
 
-  // API calls
   const fetchUsers = async () => {
     try {
       const response = await api.get<ApiResponse<User[]>>("/users");
-      setUsers(response.data.data.filter((u) => u.id !== user?.id)); // Exclude current user
+      setUsers(response.data.data);
     } catch (error) {
       console.error("Error fetching users:", error);
     }
