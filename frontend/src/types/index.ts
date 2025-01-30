@@ -1,5 +1,5 @@
 export interface User {
-  id: string;
+  id: number;
   name: string;
   email: string;
   avatar?: string;
@@ -7,12 +7,12 @@ export interface User {
 }
 
 export interface Message {
-  id: string;
-  content: string;
-  senderId: string;
-  receiverId: string;
-  groupId?: string;
-  timestamp: string;
+  id?: number;       
+  message: string;   
+  senderId: number;   
+  receiverId?: number; 
+  groupId?: number;  
+  sentAt: string; 
 }
 
 export interface LoginCredentials {
@@ -36,4 +36,13 @@ export interface ApiResponse<T> {
   data: T;
   status: number;
   message: string;
+}
+
+
+export interface Group {
+  id: number;
+  name: string;
+  created_by: string;
+  members: User[];
+  description:string;
 }

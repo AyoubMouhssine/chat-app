@@ -9,5 +9,6 @@ export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
+    // include: ['@stomp/stompjs', 'sockjs-client']
   },
 });

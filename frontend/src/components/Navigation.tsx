@@ -1,30 +1,14 @@
 import { MessageSquare } from "lucide-react";
-import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { Link, useLocation } from "react-router-dom";
 import { RootState } from "../store";
-import { logout } from "../store/slices/authSlice";
-import api from "../services/api";
+
 import Avatar from "./Avatar";
-// import { useEffect } from "react";
 
 export default function Navigation() {
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const { isAuthenticated, user} = useSelector((state: RootState) => state.auth);
   const location = useLocation();
 
-  // useEffect(() => {
-  //   const user = 
-  //   setUser(JSON.parse(localStorage.getItem("user")!));
-  // }, [dispatch]);
-
-  const handleLogout = async () => {
-    await api.post("/logout");
-    dispatch(logout());
-    navigate("/");
-  };
-
-  // Function to check if the link is active
   const isActive = (path: string) => location.pathname === path;
 
   return (
@@ -67,12 +51,6 @@ export default function Navigation() {
                     </span>
                   </div>
                 </Link>
-                <button
-                  onClick={handleLogout}
-                  className="text-sm text-red-600 hover:underline"
-                >
-                  Sign Out
-                </button>
               </div>
             ) : (
               <>
