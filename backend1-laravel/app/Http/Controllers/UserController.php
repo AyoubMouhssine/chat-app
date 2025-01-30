@@ -16,8 +16,10 @@ class UserController extends Controller
 {
     public function index()
     {
+        $users = User::where('id', '!=', auth()->id())->get();
+        
         return response()->json([
-            'data' => UserResource::collection(User::all()),
+            'data' => UserResource::collection($users),
             'message' => 'Users retrieved successfully.',
         ]);
     }

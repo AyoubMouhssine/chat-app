@@ -18,7 +18,8 @@ class GroupResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
-            'created_by' =>$this->creator->name,
+            'members' => UserResource::collection($this->users),
+            'created_by' => $this->creator->name,
         ];
     }
 }

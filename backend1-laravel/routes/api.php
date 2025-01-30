@@ -20,6 +20,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout',[AuthController::class,'logout']);
     Route::put('/update', [AuthController::class,'update']);
 
+    Route::get('/users', [UserController::class,'index'])->name('users.index');
     Route::get("/user/groups", [UserController::class, 'groups']);
 
     Route::post('/groups', [GroupController::class,'store']);
@@ -32,6 +33,5 @@ Route::middleware('auth:sanctum')->group(function () {
 // !authentification required
 Route::get('/groups', [GroupController::class,'index']);
 
-Route::get('/users', [UserController::class,'index'])->name('users.index');
 Route::get("/users/{user}", [UserController::class,"show"])->name("users.show");
 Route::delete('/users/{user}', [UserController::class,'destroy'])->name('users.destroy');

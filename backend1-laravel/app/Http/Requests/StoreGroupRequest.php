@@ -24,6 +24,8 @@ class StoreGroupRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'memberIds' => ['required', 'array', 'min:1'],
+            'memberIds.*' => ['integer', 'exists:users,id'],
         ];
     }
 }
