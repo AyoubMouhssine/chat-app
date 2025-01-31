@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Send, LogOut, Users, Plus } from "lucide-react";
 import type { ApiResponse, Message, User, Group } from "../types";
 import api from "../services/api";
-import { webSocketService } from "../services/WebSocketService";
+// import { webSocketService } from "../services/WebSocketService";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../store";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +10,8 @@ import { logout } from "../store/slices/authSlice";
 import Loader from "./Loader";
 import CreateGroupModal from "./CreateGroupModal";
 import messageApi from "../services/messageApi";
+import SockJS from "sockjs-client";
+import { CompatClient, Stomp } from "@stomp/stompjs";
 
 interface ChatState {
   type: "user" | "group";
@@ -27,7 +29,7 @@ export default function Chat() {
   const [selectedChat, setSelectedChat] = useState<ChatState | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
-
+  const [stompClient, setStompClient] = useState<CompatClient>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -41,7 +43,9 @@ export default function Chat() {
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login", { replace: true });
-    } else {
+      return;
+    }
+
       const initializeChat = async () => {
         try {
           await Promise.all([fetchUsers(), fetchGroups()]);
@@ -52,29 +56,34 @@ export default function Chat() {
         }
       };
 
-      initializeChat();
+      initializeChat();      
 
-      const unsubscribe = webSocketService.onMessage((message) => {
-        setMessages((prevMessages) => {
-          if (
-            selectedChat &&
-            ((selectedChat.type === "user" &&
-              (message.senderId === selectedChat.id ||
-                message.receiverId === selectedChat.id)) ||
-              (selectedChat.type === "group" && message.groupId === selectedChat.id))
-          ) {
-            return [...prevMessages, message];
-          }
-          return prevMessages;
-        });
-      });
+      const socket = new SockJS("http://localhost:8080/ws")
+      const client = Stomp.over(socket);
+
+      client.connect({}, () => {
+      client.subscribe("/topic/messages", (message) => {
+          const receivedMessage = JSON.parse(message.body);
+          setMessages((prevMessages) => {
+                if (
+                  selectedChat &&
+                  ((selectedChat.type === "user" &&
+                    (receivedMessage.senderId === selectedChat.id ||
+                      receivedMessage.receiverId === selectedChat.id)) ||
+                    (selectedChat.type === "group" && receivedMessage.groupId === selectedChat.id))
+                ) {
+                  return [...prevMessages,receivedMessage];
+                }
+                return prevMessages;
+              });
+        })
+      })
+      setStompClient(client);
       
-      return () => {
-        unsubscribe();
-        webSocketService.disconnect();
-      };
-    }
-  }, [isAuthenticated, navigate]);
+      return ()=> {
+        client.disconnect()
+      }
+  }, [isAuthenticated, navigate, selectedChat]);
 
   useEffect(() => {
     if (selectedChat) {
@@ -129,8 +138,12 @@ export default function Chat() {
             ? { receiverId: Number(selectedChat.id) } 
             : { groupId: Number(selectedChat.id) }),
     };
-      webSocketService.sendMessage(message);
+      stompClient?.publish({
+        destination: '/app/chat',
+        body: JSON.stringify(message)
+      });
       setNewMessage("");
+      
     } catch (error) {
       console.error("Error sending message:", error);
     }
@@ -153,7 +166,7 @@ export default function Chat() {
   const handleLogout = async () => {
     try {
       await api.post("/logout");
-      webSocketService.disconnect();
+      stompClient?.disconnect();
       dispatch(logout());
     } catch (error) {
       console.error("Error logging out:", error);

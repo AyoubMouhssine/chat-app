@@ -6,6 +6,9 @@ export default defineConfig({
   server : {
     port:3000
   },
+  define:{
+    global:'window'
+  },
   plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
