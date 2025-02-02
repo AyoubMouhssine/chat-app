@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Send, LogOut, Users, Plus } from "lucide-react";
 import type { ApiResponse, Message, User, Group } from "../types";
 import api from "../services/api";
-// import { webSocketService } from "../services/WebSocketService";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../store";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +10,7 @@ import Loader from "./Loader";
 import CreateGroupModal from "./CreateGroupModal";
 import messageApi from "../services/messageApi";
 import SockJS from "sockjs-client";
-import { CompatClient, Stomp } from "@stomp/stompjs";
+import { CompatClient, Stomp, StompSubscription } from "@stomp/stompjs";
 
 interface ChatState {
   type: "user" | "group";
@@ -29,7 +28,7 @@ export default function Chat() {
   const [selectedChat, setSelectedChat] = useState<ChatState | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
-  const [stompClient, setStompClient] = useState<CompatClient>();
+  const stompClientRef = useRef<CompatClient>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -40,51 +39,65 @@ export default function Chat() {
     scrollToBottom();
   }, [messages]);
 
+  const handleReceivedMessage = useCallback((receivedMessage: Message) => {
+    if (!selectedChat || !user) return;
+
+    const isRelevantMessage = selectedChat.type === "user" 
+      ? (receivedMessage.senderId === selectedChat.id && receivedMessage.receiverId === user.id) ||
+        (receivedMessage.senderId === user.id && receivedMessage.receiverId === selectedChat.id)
+      : receivedMessage.groupId === selectedChat.id;
+
+    if (isRelevantMessage) {
+      setMessages(prev => [...prev, receivedMessage]);
+    }
+  }, [selectedChat, user]);
+
+  // WebSocket connection setup
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login", { replace: true });
       return;
     }
 
-      const initializeChat = async () => {
-        try {
-          await Promise.all([fetchUsers(), fetchGroups()]);
-          setLoading(false);
-        } catch (error) {
-          console.error("Error initializing chat:", error);
-          setLoading(false);
-        }
-      };
+    const socket = new SockJS("http://localhost:8080/ws");
+    const client = Stomp.over(socket);
+    stompClientRef.current = client;
 
-      initializeChat();      
+    let subscription: StompSubscription;
 
-      const socket = new SockJS("http://localhost:8080/ws")
-      const client = Stomp.over(socket);
+    client.connect({}, () => {
+      subscription = client.subscribe("/topic/messages", (message) => {
+        const receivedMessage = JSON.parse(message.body);
+        handleReceivedMessage(receivedMessage);
+      });
+    });
 
-      client.connect({}, () => {
-      client.subscribe("/topic/messages", (message) => {
-          const receivedMessage = JSON.parse(message.body);
-          setMessages((prevMessages) => {
-                if (
-                  selectedChat &&
-                  ((selectedChat.type === "user" &&
-                    (receivedMessage.senderId === selectedChat.id ||
-                      receivedMessage.receiverId === selectedChat.id)) ||
-                    (selectedChat.type === "group" && receivedMessage.groupId === selectedChat.id))
-                ) {
-                  return [...prevMessages,receivedMessage];
-                }
-                return prevMessages;
-              });
-        })
-      })
-      setStompClient(client);
-      
-      return ()=> {
-        client.disconnect()
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
       }
-  }, [isAuthenticated, navigate, selectedChat]);
+      client.disconnect();
+    };
+  }, [isAuthenticated, navigate, handleReceivedMessage]);
 
+  // Initial data fetching
+  useEffect(() => {
+    const initializeChat = async () => {
+      try {
+        await Promise.all([fetchUsers(), fetchGroups()]);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error initializing chat:", error);
+        setLoading(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      initializeChat();
+    }
+  }, [isAuthenticated]);
+
+  // Fetch messages when chat is selected
   useEffect(() => {
     if (selectedChat) {
       fetchMessages(selectedChat);
@@ -123,7 +136,6 @@ export default function Chat() {
     }
   };
 
-  // Event handlers
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedChat || !newMessage.trim() || !user) return;
@@ -135,15 +147,15 @@ export default function Chat() {
         timestamp: new Date().toISOString(),
         isRead: false,
         ...(selectedChat.type === "user"
-            ? { receiverId: Number(selectedChat.id) } 
-            : { groupId: Number(selectedChat.id) }),
-    };
-      stompClient?.publish({
+          ? { receiverId: Number(selectedChat.id) }
+          : { groupId: Number(selectedChat.id) }),
+      };
+
+      stompClientRef.current?.publish({
         destination: '/app/chat',
         body: JSON.stringify(message)
       });
       setNewMessage("");
-      
     } catch (error) {
       console.error("Error sending message:", error);
     }
@@ -166,7 +178,7 @@ export default function Chat() {
   const handleLogout = async () => {
     try {
       await api.post("/logout");
-      stompClient?.disconnect();
+      stompClientRef.current?.disconnect();
       dispatch(logout());
     } catch (error) {
       console.error("Error logging out:", error);
@@ -188,7 +200,6 @@ export default function Chat() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] mt-16 bg-gray-100">
-      {/* Sidebar */}
       <div className="w-1/4 bg-white border-r border-gray-200 p-4 flex flex-col h-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Chats</h2>
