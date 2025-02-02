@@ -17,6 +17,10 @@ interface ChatState {
   id: number;
 }
 
+interface UnreadMessages {
+  [key: string]: number;
+}
+
 export default function Chat() {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
@@ -28,6 +32,8 @@ export default function Chat() {
   const [selectedChat, setSelectedChat] = useState<ChatState | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState<UnreadMessages>({});
+  // const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const stompClientRef = useRef<CompatClient>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -40,17 +46,39 @@ export default function Chat() {
   }, [messages]);
 
   const handleReceivedMessage = useCallback((receivedMessage: Message) => {
-    if (!selectedChat || !user) return;
+    if (!user) return;
 
-    const isRelevantMessage = selectedChat.type === "user" 
-      ? (receivedMessage.senderId === selectedChat.id && receivedMessage.receiverId === user.id) ||
-        (receivedMessage.senderId === user.id && receivedMessage.receiverId === selectedChat.id)
-      : receivedMessage.groupId === selectedChat.id;
+    const isFromCurrentChat = selectedChat && (
+      (selectedChat.type === "user" && 
+        ((receivedMessage.senderId === selectedChat.id && receivedMessage.receiverId === user.id) ||
+         (receivedMessage.senderId === user.id && receivedMessage.receiverId === selectedChat.id))) ||
+      (selectedChat.type === "group" && receivedMessage.groupId === selectedChat.id)
+    );
 
-    if (isRelevantMessage) {
+    if (isFromCurrentChat) {
       setMessages(prev => [...prev, receivedMessage]);
+    } else if (receivedMessage.senderId !== user.id) {
+      // Update unread count for the sender
+      const chatId = receivedMessage.groupId 
+        ? `group_${receivedMessage.groupId}` 
+        : `user_${receivedMessage.senderId}`;
+      
+      setUnreadMessages(prev => ({
+        ...prev,
+        [chatId]: (prev[chatId] || 0) + 1
+      }));
     }
   }, [selectedChat, user]);
+
+  // Clear unread messages when selecting a chat
+  const handleSelectChat = (chat: ChatState) => {
+    const chatId = chat.type === "group" ? `group_${chat.id}` : `user_${chat.id}`;
+    setUnreadMessages(prev => ({
+      ...prev,
+      [chatId]: 0
+    }));
+    setSelectedChat(chat);
+  };
 
   // WebSocket connection setup
   useEffect(() => {
@@ -226,25 +254,33 @@ export default function Chat() {
           <div className="mb-6">
             <h3 className="text-sm font-semibold text-gray-500 mb-2">Groups</h3>
             <div className="space-y-2">
-              {groups.map((group) => (
-                <div
-                  key={group.id}
-                  onClick={() => setSelectedChat({ type: "group", id: group.id })}
-                  className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
-                    selectedChat?.id === group.id && selectedChat.type === "group"
-                      ? "bg-blue-50"
-                      : "hover:bg-gray-50"
-                  }`}
-                >
-                  <Users className="w-8 h-8 text-gray-500 mr-2" />
-                  <div>
-                    <p className="font-medium">{group.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {group.members.length} members
-                    </p>
+              {groups.map((group) => {
+                const unreadCount = unreadMessages[`group_${group.id}`] || 0;
+                return (
+                  <div
+                    key={group.id}
+                    onClick={() => handleSelectChat({ type: "group", id: group.id })}
+                    className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedChat?.id === group.id && selectedChat.type === "group"
+                        ? "bg-blue-50"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <Users className="w-8 h-8 text-gray-500 mr-2" />
+                    <div className="flex-1">
+                      <p className="font-medium">{group.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {group.members.length} members
+                      </p>
+                    </div>
+                    {unreadCount > 0 && (
+                      <span className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -254,41 +290,46 @@ export default function Chat() {
               Direct Messages
             </h3>
             <div className="space-y-2">
-              {users.map((chatUser) => (
-                <div
-                  key={chatUser.id}
-                  onClick={() =>
-                    setSelectedChat({ type: "user", id: chatUser.id })
-                  }
-                  className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
-                    selectedChat?.id === chatUser.id &&
-                    selectedChat.type === "user"
-                      ? "bg-blue-50"
-                      : "hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="relative">
-                    <img
-                      src={chatUser.avatar}
-                      alt={`${chatUser.name} avatar`}
-                      className="w-8 h-8 rounded-full mr-2"
-                    />
-                    <span
-                      className={`absolute bottom-0 right-2 w-3 h-3 rounded-full border-2 border-white ${
-                        chatUser.status === "online"
-                          ? "bg-green-500"
-                          : "bg-gray-400"
-                      }`}
-                    />
+              {users.map((chatUser) => {
+                const unreadCount = unreadMessages[`user_${chatUser.id}`] || 0;
+                return (
+                  <div
+                    key={chatUser.id}
+                    onClick={() => handleSelectChat({ type: "user", id: chatUser.id })}
+                    className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedChat?.id === chatUser.id && selectedChat.type === "user"
+                        ? "bg-blue-50"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    <div className="relative">
+                      <img
+                        src={chatUser.avatar}
+                        alt={`${chatUser.name} avatar`}
+                        className="w-8 h-8 rounded-full mr-2"
+                      />
+                      <span
+                        className={`absolute bottom-0 right-2 w-3 h-3 rounded-full border-2 border-white ${
+                          chatUser.status === "online"
+                            ? "bg-green-500"
+                            : "bg-gray-400"
+                        }`}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{chatUser.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {chatUser.status === "online" ? "Online" : "Offline"}
+                      </p>
+                    </div>
+                    {unreadCount > 0 && (
+                      <span className="bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
                   </div>
-                  <div>
-                    <p className="font-medium">{chatUser.name}</p>
-                    <p className="text-sm text-gray-500">
-                      {chatUser.status === "online" ? "Online" : "Offline"}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
