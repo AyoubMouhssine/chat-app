@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateRequest extends FormRequest
+class UpdateAvatarRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,12 +22,7 @@ class UpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,' . $this->user()->id],
-            'status' => ['sometimes', 'string', 'nullable', 'in:online,offline'],
-            'currentPassword' => ['sometimes', 'required_with:newPassword', 'current_password'],
-            'newPassword' => ['sometimes', 'required_with:currentPassword', 'min:8'],
+            'avatar' => [ 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048']
         ];
     }
-    
 }

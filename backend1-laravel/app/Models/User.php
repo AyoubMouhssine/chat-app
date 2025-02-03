@@ -29,7 +29,7 @@ class User extends Authenticatable
     protected function avatar(): Attribute
     {
         return Attribute::make(
-            get: fn (string|null $value) => $value ? asset('storage/' . $this->image) : asset("storage/avatars/default-avatar.png"),
+            get: fn (string|null $value) => $value ? asset('storage/' . $value) : asset("storage/avatars/default-avatar.png"),
         );
     }
 

@@ -17,8 +17,9 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
+    Route::post('/user/avatar', [UserController::class,'updateAvatar'])->name('updateAvatar');
     Route::post('/logout',[AuthController::class,'logout']);
-    Route::put('/update', [AuthController::class,'update']);
+    Route::put('/user/update', [UserController::class,'update']);
 
     Route::get('/users', [UserController::class,'index'])->name('users.index');
     Route::get("/user/groups", [UserController::class, 'groups']);

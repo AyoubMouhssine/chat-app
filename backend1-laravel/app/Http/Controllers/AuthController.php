@@ -44,26 +44,6 @@ class AuthController extends Controller
         ]);
     }
     
-    public function update(UpdateRequest $request)    {
-        $user = Auth::user();
-        $validatedData = $request->validated();
-
-        if ($request->hasFile('avatar')) {
-            if ($user->avatar) {
-                Storage::disk('public')->delete($user->avatar); 
-            }
-
-            $imagePath = $request->file('avatar')->store('public/avatars'); 
-            $validatedData['avatar'] = $imagePath;
-        }
-
-        $user->update($validatedData); 
-
-        return response()->json([
-            'message' => 'User updated successfully.',
-            'user' => new UserResource($user),
-        ]);
-    }
     public function logout(){
         auth()->user()->tokens()->delete();
 
