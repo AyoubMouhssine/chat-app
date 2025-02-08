@@ -28,8 +28,18 @@ const authSlice = createSlice({
       localStorage.removeItem("user");
       state.user = null;
     },
+    updateAvatar(state, {payload}) {
+      let user = JSON.parse(localStorage.getItem('user')!);
+      localStorage.setItem('user', JSON.stringify(user)); 
+      user = {...user, avatar : payload}
+      state.user = user;
+    },
+    updateUser(state, {payload}) {
+      state.user = payload;
+      localStorage.setItem('user', JSON.stringify(state.user));
+    }
   },
 });
 
-export const { login, logout } = authSlice.actions;
+export const { login, logout, updateAvatar, updateUser } = authSlice.actions;
 export default authSlice;

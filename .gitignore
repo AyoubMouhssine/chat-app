@@ -39,6 +39,8 @@ dist-ssr
 /.phpunit.result.cache
 /node_modules/
 
+/backend3-express/node_modules
+
 # General Composer
 composer.phar
 
