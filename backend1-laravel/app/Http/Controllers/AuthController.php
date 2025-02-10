@@ -4,11 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
-use App\Http\Requests\UpdateRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Auth;
-use Storage;
 
 class AuthController extends Controller
 {
@@ -39,6 +37,8 @@ class AuthController extends Controller
 
         $user = User::create($validated);
 
+        $this->sendWelcomeMessage($user);
+        
         return response()->json([
             'message' => 'Registration successful.',
         ]);
@@ -50,5 +50,23 @@ class AuthController extends Controller
         return response()->json([
           "message"=>"logged out"
         ]);
+    }
+
+
+    public function sendWelcomeMessage($user){
+        $conf = new \RdKafka\Conf();
+        $broker = env('KAFKA_BROKER', 'kafka:9092');
+        $conf->set('bootstrap.servers', $broker);
+        $conf->set('security.protocol', 'plaintext');
+        $producer = new \RdKafka\Producer($conf);
+        $topic = $producer->newTopic("welcome-email");
+    
+        $payload = json_encode([
+            'email' => $user->email,
+            'name'  => $user->name,
+        ]);
+        
+        $topic->produce(RD_KAFKA_PARTITION_UA, 0, $payload);
+        $producer->flush(10000);
     }
 }

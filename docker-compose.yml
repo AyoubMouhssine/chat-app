@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - mysql-network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      zookeeper:
+        condition: service_started
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      # KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      # KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    ports:
+      - "9092:9092"
+    networks:
+      - mysql-network
+
+  db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=chatapp
+      - MYSQL_ROOT_PASSWORD=root
+    networks:
+      - mysql-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    volumes:
+      - db_data:/var/lib/mysql
+
+  laravel:
+    build:
+      context: ./backend1-laravel
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: chatapp
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      KAFKA_BROKER: kafka:9092
+    volumes:
+      - ../storage/app:/var/www/html/storage/app
+       - ./.env:/var/www/html/.env
+    networks:
+      - mysql-network
+    depends_on:
+      - kafka
+      - db
+
+  springboot:
+    build:
+      context: ./backend2
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/chatapp
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+    networks:
+      - mysql-network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  express:
+    build:
+      context: ./backend3-express
+      dockerfile: Dockerfile
+    ports:
+      - "3500:3500"
+    environment:
+      - PORT=3500
+      - KAFKA_BROKER=kafka:9092
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=ayoub.mouhssine00@gmail.com
+      - SMTP_PASSWORD=ohezdumabpirdwcn
+      - EMAIL_FROM=noreply@securechat.com
+    volumes:
+      - ./backend3-express:/usr/src/app
+    depends_on:
+      kafka:
+        condition: service_started
+    networks:
+      - mysql-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/usr/src/app
+    networks:
+      - mysql-network
+
+volumes:
+  db_data:
+
+networks:
+  mysql-network:
+    name: mysql-network
+    # driver: bridge

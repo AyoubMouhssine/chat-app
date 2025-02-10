@@ -7,17 +7,22 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Configure Kafka
 const kafka = new Kafka({
   clientId: 'welcome-email-service',
-  brokers: [process.env.KAFKA_BROKER || 'localhost:9092']
+  brokers: ['kafka:9092'],
+  connectionTimeout: 10000,
+  requestTimeout: 25000,
+  retry: {
+    initialRetryTime: 300,
+    retries: 10
+  }
 });
 
 // Configure email transporter
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: process.env.SMTP_PORT,
-  secure: true,
+  secure: false,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD
@@ -39,28 +44,42 @@ const createWelcomeEmail = (userName) => ({
 const consumer = kafka.consumer({ groupId: 'welcome-email-group' });
 
 const runConsumer = async () => {
-  await consumer.connect();
-  await consumer.subscribe({ topic: 'user-registration', fromBeginning: false });
-
-  await consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
-      try {
-        const userData = JSON.parse(message.value.toString());
-        
-        // Send welcome email
-        await transporter.sendMail({
-          from: process.env.EMAIL_FROM,
-          to: userData.email,
-          ...createWelcomeEmail(userData.name)
-        });
-
-        console.log(`Welcome email sent to ${userData.email}`);
-      } catch (error) {
-        console.error('Error processing message:', error);
-      }
-    },
-  });
+  try {
+    await consumer.connect();
+    await consumer.subscribe({ topic: 'welcome-email', fromBeginning: false });
+    await consumer.run({
+      eachMessage: async ({ topic, partition, message }) => {
+        try {
+          if (!message.value) {
+            console.error('Received an empty Kafka message');
+            return;
+          }
+      
+          const userData = JSON.parse(message.value.toString());
+      
+          if (!userData.email || !userData.name) {
+            console.error('Invalid message format:', message.value.toString());
+            return;
+          }
+      
+          await transporter.sendMail({
+            from: process.env.EMAIL_FROM,
+            to: userData.email,
+            ...createWelcomeEmail(userData.name),
+          });
+      
+          console.log(`Welcome email sent to ${userData.email}`);
+        } catch (error) {
+          console.error('Error processing message:', error);
+        }
+      },
+    });
+  } catch (error) {
+    console.error('Error in consumer:', error);
+    setTimeout(runConsumer, 5000);
+  }
 };
+
 
 // Start the Express server and Kafka consumer
 app.listen(port, async () => {

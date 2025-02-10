@@ -1,0 +1,31 @@
+docker exec -it [your_laravel_container_name] sh -c 'echo "APP_NAME=Laravel
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+LOG_CHANNEL=stack
+LOG_DEPRECATIONS_CHANNEL=null
+LOG_LEVEL=debug
+
+KAFKA_BROKER=kafka:9092
+
+DB_CONNECTION=mysql
+DB_HOST=db
+DB_PORT=3306
+DB_DATABASE=chatapp
+DB_USERNAME=root
+DB_PASSWORD=root" > /var/www/html/.env'
+
+
+docker exec -it [your_laravel_container_name] php artisan key:generate
+docker exec -it [your_laravel_container_name] php artisan config:clear
+docker exec -it [your_laravel_container_name] php artisan migrate:refresh
+
+
+
+# Create a kafka topic
+docker exec -it <KAFKA_CONTAINER_NAME> /usr/bin/kafka-topics --create --topic <TOPIC_NAME> --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+
+# List created topics 
+docker exec -it <KAFKA_CONTAINER_NAME> /usr/bin/kafka-topics --list --bootstrap-server localhost:9092
