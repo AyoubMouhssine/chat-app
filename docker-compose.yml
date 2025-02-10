@@ -18,10 +18,6 @@ services:
         condition: service_started
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      # KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
-      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-      # KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      # KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
@@ -64,7 +60,7 @@ services:
       KAFKA_BROKER: kafka:9092
     volumes:
       - ../storage/app:/var/www/html/storage/app
-       - ./.env:/var/www/html/.env
+      - ../storage/app/public/avatars:/var/www/html/public/storage/avatars
     networks:
       - mysql-network
     depends_on:
@@ -126,4 +122,3 @@ volumes:
 networks:
   mysql-network:
     name: mysql-network
-    # driver: bridge
