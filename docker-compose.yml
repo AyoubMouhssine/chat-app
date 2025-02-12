@@ -30,6 +30,11 @@ services:
       - "9092:9092"
     networks:
       - mysql-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   db:
     image: mysql:8.0
@@ -48,9 +53,7 @@ services:
       - db_data:/var/lib/mysql
 
   laravel:
-    build:
-      context: ./backend1-laravel
-      dockerfile: Dockerfile
+    image: ayoubmouhssine1/chat-app:laravel
     ports:
       - "8000:80"
     environment:
@@ -67,13 +70,13 @@ services:
     networks:
       - mysql-network
     depends_on:
-      - kafka
-      - db
+      db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
 
   springboot:
-    build:
-      context: ./backend2
-      dockerfile: Dockerfile
+    image: ayoubmouhssine1/chat-app:springboot
     ports:
       - "8080:8080"
     environment:
@@ -87,9 +90,7 @@ services:
         condition: service_healthy
 
   express:
-    build:
-      context: ./backend3-express
-      dockerfile: Dockerfile
+    image: ayoubmouhssine1/chat-app:express
     ports:
       - "3500:3500"
     environment:
@@ -109,9 +110,7 @@ services:
       - mysql-network
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ayoubmouhssine1/chat-app:frontend
     ports:
       - "3000:3000"
     volumes:
